@@ -448,21 +448,52 @@ let sessionPhotos = [];
 let viewingSessionId = null;
 
 const EXO_DB = [
+  // ── CARDIO ──
+  { name: 'Tapis de course', muscle: 'Cardio', tool: 'Cardio', type: 'cardio' },
+  { name: 'Vélo elliptique', muscle: 'Cardio', tool: 'Cardio', type: 'cardio' },
+  { name: 'Vélo stationnaire', muscle: 'Cardio', tool: 'Cardio', type: 'cardio' },
+  { name: 'Rameur', muscle: 'Cardio', tool: 'Cardio', type: 'cardio' },
+  { name: 'Stairmaster', muscle: 'Cardio', tool: 'Cardio', type: 'cardio' },
+  // ── PECTORAUX ──
   { name: 'Développé couché', muscle: 'Pectoraux', tool: 'Barre' },
   { name: 'Développé incliné', muscle: 'Pectoraux', tool: 'Haltères' },
+  { name: 'Chest Press Machine', muscle: 'Pectoraux', tool: 'Machine' },
+  { name: 'Chest Fly Machine', muscle: 'Pectoraux', tool: 'Machine' },
   { name: 'Écarté couché', muscle: 'Pectoraux', tool: 'Haltères' },
+  { name: 'DB Pullover', muscle: 'Pectoraux', tool: 'Haltères' },
   { name: 'Pompes lestées', muscle: 'Pectoraux', tool: 'Poids corps' },
+  // ── ÉPAULES ──
   { name: 'Développé militaire', muscle: 'Épaules', tool: 'Barre' },
-  { name: 'Élévations latérales', muscle: 'Épaules', tool: 'Haltères' },
-  { name: 'Élévations frontales', muscle: 'Épaules', tool: 'Haltères' },
-  { name: 'Tirage vertical', muscle: 'Dos', tool: 'Poulie' },
+  { name: 'Shoulder Press', muscle: 'Épaules', tool: 'Haltères' },
+  { name: 'Lateral Raise', muscle: 'Épaules', tool: 'Haltères' },
+  { name: 'Front Raise', muscle: 'Épaules', tool: 'Haltères' },
+  { name: 'Rear Delt Fly', muscle: 'Épaules', tool: 'Haltères' },
+  { name: 'Face Pull', muscle: 'Épaules', tool: 'Poulie' },
+  // ── DOS ──
+  { name: 'Lat Pulldown', muscle: 'Dos', tool: 'Poulie' },
+  { name: 'Lat Pulldown (Face Away Supination)', muscle: 'Dos', tool: 'Poulie' },
+  { name: 'Seated Row Machine', muscle: 'Dos', tool: 'Machine' },
+  { name: 'DB Row Bilatéral', muscle: 'Dos', tool: 'Haltères' },
   { name: 'Rowing barre', muscle: 'Dos', tool: 'Barre' },
-  { name: 'Rowing haltère', muscle: 'Dos', tool: 'Haltères' },
+  { name: 'Face Away Cable Pullover', muscle: 'Dos', tool: 'Poulie' },
+  { name: 'Straight Arm Pulldown', muscle: 'Dos', tool: 'Poulie' },
+  { name: 'Scapular Pulldown', muscle: 'Dos', tool: 'Poulie' },
   { name: 'Traction', muscle: 'Dos', tool: 'Poids corps' },
+  { name: 'Back Extension', muscle: 'Dos', tool: 'Machine' },
+  // ── BICEPS ──
+  { name: 'Curl Câble', muscle: 'Biceps', tool: 'Poulie' },
+  { name: 'Curl Machine', muscle: 'Biceps', tool: 'Machine' },
   { name: 'Curl barre', muscle: 'Biceps', tool: 'Barre' },
   { name: 'Curl haltères', muscle: 'Biceps', tool: 'Haltères' },
+  { name: 'Incline DB Curl', muscle: 'Biceps', tool: 'Haltères' },
+  { name: 'Hammer Curl', muscle: 'Biceps', tool: 'Haltères' },
+  // ── TRICEPS ──
+  { name: 'Triceps Pushdown Corde', muscle: 'Triceps', tool: 'Poulie' },
+  { name: 'Skull Crusher EZ', muscle: 'Triceps', tool: 'Barre EZ' },
+  { name: 'Seated Triceps Machine', muscle: 'Triceps', tool: 'Machine' },
   { name: 'Dips', muscle: 'Triceps', tool: 'Poids corps' },
-  { name: 'Extensions triceps', muscle: 'Triceps', tool: 'Poulie' },
+  { name: 'Dips Assistés', muscle: 'Triceps', tool: 'Machine' },
+  // ── JAMBES ──
   { name: 'Squat barre', muscle: 'Quadriceps', tool: 'Barre' },
   { name: 'Presse à cuisses', muscle: 'Quadriceps', tool: 'Machine' },
   { name: 'Fentes marchées', muscle: 'Quadriceps', tool: 'Haltères' },
@@ -470,8 +501,15 @@ const EXO_DB = [
   { name: 'Soulevé de terre', muscle: 'Dos / Ischio', tool: 'Barre' },
   { name: 'Hip thrust', muscle: 'Fessiers', tool: 'Barre' },
   { name: 'Mollets debout', muscle: 'Mollets', tool: 'Machine' },
-  { name: 'Crunch', muscle: 'Abdominaux', tool: 'Poids corps' },
+  // ── ABDOMINAUX ──
+  { name: 'Cable Crunch', muscle: 'Abdominaux', tool: 'Poulie' },
+  { name: 'Crunch Machine', muscle: 'Abdominaux', tool: 'Machine' },
+  { name: 'Pallof Press', muscle: 'Abdominaux', tool: 'Poulie' },
+  { name: 'Cable Side Bend', muscle: 'Abdominaux', tool: 'Poulie' },
   { name: 'Gainage', muscle: 'Abdominaux', tool: 'Poids corps' },
+  // ── AVANT-BRAS ──
+  { name: 'Reverse Curl', muscle: 'Avant-bras', tool: 'Haltères' },
+  { name: 'Wrist Curl', muscle: 'Avant-bras', tool: 'Haltères' },
 ];
 
 // ─── UTILS ───
@@ -618,12 +656,16 @@ function filterExos(q) {
 }
 
 function addExo(exoInfo) {
+  const isCardio = exoInfo.type === 'cardio';
   currentSession.exercices.push({
     id: uuid(),
     name: exoInfo.name,
     muscle: exoInfo.muscle,
     tool: exoInfo.tool,
-    series: [{ charge: '', reps: '', done: false }]
+    type: isCardio ? 'cardio' : 'strength',
+    series: isCardio
+      ? [{ duree: '', vitesse: '', inclinaison: '', done: false }]
+      : [{ charge: '', unit: 'kg', reps: '', done: false }]
   });
   document.getElementById('exo-modal').classList.remove('open');
   renderExos();
@@ -631,8 +673,8 @@ function addExo(exoInfo) {
 
 function addCustomExo(name) {
   currentSession.exercices.push({
-    id: uuid(), name, muscle: 'Personnalisé', tool: '—',
-    series: [{ charge: '', reps: '', done: false }]
+    id: uuid(), name, muscle: 'Personnalisé', tool: '—', type: 'strength',
+    series: [{ charge: '', unit: 'kg', reps: '', done: false }]
   });
   document.getElementById('exo-modal').classList.remove('open');
   renderExos();
@@ -642,19 +684,47 @@ function addCustomExo(name) {
 function renderExos() {
   const list = document.getElementById('exo-list');
   if (!currentSession || !currentSession.exercices.length) { list.innerHTML = ''; return; }
-  list.innerHTML = currentSession.exercices.map((exo, ei) => `
-    <div class="exo-card" id="exo-${exo.id}">
-      <div class="exo-header" onclick="toggleExoBody('${exo.id}')">
+  list.innerHTML = currentSession.exercices.map((exo) => {
+    const isCardio = exo.type === 'cardio';
+    const badgeText = isCardio
+      ? (exo.series[0]?.duree ? exo.series[0].duree + ' min' : 'Cardio')
+      : `${exo.series.length} série${exo.series.length > 1 ? 's' : ''}`;
+
+    const bodyContent = isCardio ? `
+      <div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
         <div>
-          <div class="exo-name">${exo.name}</div>
-          <div class="exo-muscle">${exo.muscle} · ${exo.tool}</div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">Durée (min)</div>
+          <input class="serie-input" type="number" inputmode="numeric" value="${exo.series[0]?.duree || ''}" placeholder="35"
+            onchange="updateCardio('${exo.id}','duree',this.value)">
         </div>
-        <span class="exo-badge">${exo.series.length} série${exo.series.length > 1 ? 's' : ''}</span>
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">Vitesse (km/h)</div>
+          <input class="serie-input" type="number" inputmode="decimal" step="0.5" value="${exo.series[0]?.vitesse || ''}" placeholder="4"
+            onchange="updateCardio('${exo.id}','vitesse',this.value)">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">Inclin. (%)</div>
+          <input class="serie-input" type="number" inputmode="numeric" value="${exo.series[0]?.inclinaison || ''}" placeholder="10"
+            onchange="updateCardio('${exo.id}','inclinaison',this.value)">
+        </div>
       </div>
-      <div class="exo-body" id="body-${exo.id}">
-        <div class="series-header"><span></span><span>Charge (kg)</span><span>Reps</span><span></span></div>
+      <div class="add-serie" onclick="toggleCardio('${exo.id}')" style="justify-content:center;">
+        <div class="serie-check${exo.series[0]?.done ? ' done' : ''}" style="margin-right:8px">${exo.series[0]?.done ? '✓' : ''}</div>
+        ${exo.series[0]?.done ? 'Terminé ✓' : 'Marquer comme terminé'}
+      </div>` : `
+        <div class="series-header">
+          <span></span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            Charge
+            <span onclick="toggleUnit('${exo.id}')" style="cursor:pointer;font-size:10px;background:var(--bg4);padding:2px 7px;border-radius:99px;color:var(--text2);border:1px solid var(--border2);">
+              ${exo.series[0]?.unit || 'kg'}
+            </span>
+          </span>
+          <span>Reps</span>
+          <span></span>
+        </div>
         ${exo.series.map((s, si) => `
-          <div class="serie-row${s.done ? ' done-row' : ''}" id="row-${exo.id}-${si}">
+          <div class="serie-row${s.done ? ' done-row' : ''}">
             <span class="serie-num">${si + 1}</span>
             <input class="serie-input" type="number" inputmode="decimal" step="0.5" value="${s.charge}" placeholder="—"
               onchange="updateSerie('${exo.id}',${si},'charge',this.value)">
@@ -666,12 +736,44 @@ function renderExos() {
           </div>`).join('')}
         <div class="add-serie" onclick="addSerie('${exo.id}')">
           <div class="add-circle">＋</div> Ajouter une série
+        </div>`;
+
+    return `
+    <div class="exo-card" id="exo-${exo.id}">
+      <div class="exo-header" onclick="toggleExoBody('${exo.id}')">
+        <div>
+          <div class="exo-name">${exo.name}</div>
+          <div class="exo-muscle">${exo.muscle} · ${exo.tool}</div>
         </div>
+        <span class="exo-badge">${badgeText}</span>
       </div>
-    </div>`).join('');
+      <div class="exo-body" id="body-${exo.id}">${bodyContent}</div>
+    </div>`;
+  }).join('');
 }
 
-function toggleExoBody(id) {
+function updateCardio(exoId, field, val) {
+  const exo = currentSession.exercices.find(e => e.id === exoId);
+  if (exo) { exo.series[0][field] = val; }
+  // update badge
+  const badge = document.querySelector(`#exo-${exoId} .exo-badge`);
+  if (badge && exo?.series[0]?.duree) badge.textContent = exo.series[0].duree + ' min';
+}
+
+function toggleCardio(exoId) {
+  const exo = currentSession.exercices.find(e => e.id === exoId);
+  if (exo) { exo.series[0].done = !exo.series[0].done; renderExos(); }
+}
+
+function toggleUnit(exoId) {
+  const exo = currentSession.exercices.find(e => e.id === exoId);
+  if (!exo) return;
+  const newUnit = (exo.series[0]?.unit || 'kg') === 'kg' ? 'lbs' : 'kg';
+  exo.series.forEach(s => s.unit = newUnit);
+  renderExos();
+}
+
+
   const b = document.getElementById('body-' + id);
   if (b) b.style.display = b.style.display === 'none' ? '' : 'none';
 }
@@ -692,8 +794,8 @@ function toggleDone(exoId, si) {
 function addSerie(exoId) {
   const exo = currentSession.exercices.find(e => e.id === exoId);
   if (!exo) return;
-  const last = exo.series[exo.series.length - 1] || { charge: '', reps: '' };
-  exo.series.push({ charge: last.charge, reps: last.reps, done: false });
+  const last = exo.series[exo.series.length - 1] || { charge: '', reps: '', unit: 'kg' };
+  exo.series.push({ charge: last.charge, reps: last.reps, unit: last.unit || 'kg', done: false });
   renderExos();
 }
 
@@ -723,13 +825,25 @@ function finishSession() {
     <div class="stat-card"><div class="stat-val">${ser}</div><div class="stat-lbl">Séries</div></div>`;
 
   document.getElementById('recap-exos').innerHTML = currentSession.exercices.map(exo => {
+    if (exo.type === 'cardio') {
+      const s = exo.series[0] || {};
+      return `<div class="recap-exo">
+        <div class="recap-exo-name">🏃 ${exo.name}</div>
+        <div class="pills">
+          ${s.duree ? `<div class="pill">${s.duree} min</div>` : ''}
+          ${s.vitesse ? `<div class="pill">${s.vitesse} km/h</div>` : ''}
+          ${s.inclinaison ? `<div class="pill">${s.inclinaison}% inclin.</div>` : ''}
+        </div>
+      </div>`;
+    }
     const maxCharge = Math.max(...exo.series.map(s => parseFloat(s.charge) || 0));
+    const unit = exo.series[0]?.unit || 'kg';
     return `<div class="recap-exo">
       <div class="recap-exo-name">${exo.name}</div>
       <div class="pills">
         ${exo.series.map(s => {
           const isPR = parseFloat(s.charge) === maxCharge && maxCharge > 0;
-          return `<div class="pill${isPR ? ' pr' : ''}">${s.charge || '—'}kg × ${s.reps || '—'}${isPR ? ' PR' : ''}</div>`;
+          return `<div class="pill${isPR ? ' pr' : ''}">${s.charge || '—'}${unit} × ${s.reps || '—'}${isPR ? ' PR' : ''}</div>`;
         }).join('')}
       </div>
     </div>`;
@@ -785,13 +899,25 @@ async function viewSession(id) {
   </div>`;
 
   html += s.exercices.map(exo => {
+    if (exo.type === 'cardio') {
+      const c = exo.series[0] || {};
+      return `<div class="recap-exo">
+        <div class="recap-exo-name">🏃 ${exo.name}</div>
+        <div class="pills">
+          ${c.duree ? `<div class="pill">${c.duree} min</div>` : ''}
+          ${c.vitesse ? `<div class="pill">${c.vitesse} km/h</div>` : ''}
+          ${c.inclinaison ? `<div class="pill">${c.inclinaison}% inclin.</div>` : ''}
+        </div>
+      </div>`;
+    }
     const maxCharge = Math.max(...exo.series.map(sr => parseFloat(sr.charge) || 0));
+    const unit = exo.series[0]?.unit || 'kg';
     return `<div class="recap-exo">
       <div class="recap-exo-name">${exo.name}</div>
       <div class="pills">
         ${exo.series.map(sr => {
           const isPR = parseFloat(sr.charge) === maxCharge && maxCharge > 0;
-          return `<div class="pill${isPR ? ' pr' : ''}">${sr.charge || '—'}kg × ${sr.reps || '—'}${isPR ? ' PR' : ''}</div>`;
+          return `<div class="pill${isPR ? ' pr' : ''}">${sr.charge || '—'}${unit} × ${sr.reps || '—'}${isPR ? ' PR' : ''}</div>`;
         }).join('')}
       </div>
     </div>`;
