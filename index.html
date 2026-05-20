@@ -328,6 +328,7 @@ async function loadHome() {
 function startNewSession() {
   CS = { id:uuid(), startTime:Date.now(), name:'', exercices:[], duration:0, photos:[], notes:'' };
   sPhotos = [];
+  closedBodies.clear();
   document.getElementById('exo-list').innerHTML = '';
   goTo('s-seance');
   clearInterval(sTI);
@@ -390,12 +391,21 @@ function addCustom() {
 }
 
 // ── RENDER ──
+const closedBodies = new Set();
+
 function renderExos() {
   if (!CS) return;
+  // Save current collapse state before re-rendering
+  CS.exercices.forEach((_,ei) => {
+    const b = document.getElementById('bdy'+ei);
+    if (b && b.style.display === 'none') closedBodies.add(ei);
+    else closedBodies.delete(ei);
+  });
   document.getElementById('exo-list').innerHTML = CS.exercices.map((exo,ei)=>{
     const isC = exo.type==='cardio';
     const badge = isC ? (exo.series[0]?.duree ? exo.series[0].duree+' min':'Cardio') : exo.series.length+' série'+(exo.series.length>1?'s':'');
     const tag = exo.tag || null;
+    const isClosed = closedBodies.has(ei);
 
     // superset bridge shown BEFORE this card if previous exo links to this one
     const prevExo = ei > 0 ? CS.exercices[ei-1] : null;
@@ -442,12 +452,18 @@ function renderExos() {
         <div><div class="exo-name">${isC?'🏃 ':''}${exo.name}${tag==='superset'?' <span style="font-size:10px;color:#64a0ff">⚡SS</span>':tag==='dropset'?' <span style="font-size:10px;color:#ff8c00">🔥DS</span>':''}</div><div class="exo-muscle">${exo.muscle} · ${exo.tool}</div></div>
         <span class="exo-badge" id="bdg${ei}">${badge}</span>
       </div>
-      <div class="exo-body" id="bdy${ei}">${body}${optRow}</div>
+      <div class="exo-body" id="bdy${ei}" style="${isClosed?'display:none':''}">${body}${optRow}</div>
     </div>`;
   }).join('');
 }
 
-function togBody(ei) { const b=document.getElementById('bdy'+ei); if(b) b.style.display=b.style.display==='none'?'':'none'; }
+function togBody(ei) {
+  const b = document.getElementById('bdy'+ei);
+  if (!b) return;
+  const closing = b.style.display !== 'none';
+  b.style.display = closing ? 'none' : '';
+  if (closing) closedBodies.add(ei); else closedBodies.delete(ei);
+}
 function updS(ei,si,f,v) { if(CS?.exercices[ei]) CS.exercices[ei].series[si][f]=v; }
 function updC(ei,f,v) {
   if(!CS?.exercices[ei]) return;
