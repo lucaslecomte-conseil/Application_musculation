@@ -118,6 +118,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
 .note-field{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;resize:none;min-height:90px;line-height:1.5;margin-bottom:14px}
 .note-field:focus{outline:none;border-color:var(--border2)}
 #photo-input{display:none}
+.ai-block{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.ai-block-title{font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--accent);text-transform:uppercase;margin-bottom:10px}
+.ai-content{font-size:14px;color:var(--text2);line-height:1.7;white-space:pre-wrap}
+.ai-loading{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text2)}
+.ai-spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.key-setup{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center}
+.key-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;color:var(--text);font-family:'DM Mono',monospace;margin:12px 0}
+.key-input:focus{outline:none;border-color:rgba(200,241,53,0.4)}
+.ai-hero{background:linear-gradient(135deg,rgba(200,241,53,0.08) 0%,transparent 60%);border:1px solid rgba(200,241,53,0.2);border-radius:var(--radius);padding:16px;margin-bottom:16px;cursor:pointer}
+.ai-hero:active{background:linear-gradient(135deg,rgba(200,241,53,0.15) 0%,transparent 60%)}
+.ai-hero-label{font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--accent);text-transform:uppercase;margin-bottom:6px}
+.ai-hero-title{font-size:17px;font-weight:600;letter-spacing:-0.02em;margin-bottom:3px}
+.ai-hero-sub{font-size:13px;color:var(--text2)}
 </style>
 </head>
 <body>
@@ -130,7 +144,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
       <div class="topbar-title">Coach de Poche</div>
       <div class="topbar-sub" id="home-date"></div>
     </div>
-    <div class="icon-btn" onclick="alert('Graphiques en Phase 3 !')">📊</div>
+    <div class="icon-btn" onclick="goTo('s-ai')">🤖</div>
   </div>
   <div class="content">
     <div class="home-hero" onclick="startNewSession()">
@@ -140,6 +154,46 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
     </div>
     <div class="section-label">Historique</div>
     <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- ═══ AI COACH ═══ -->
+<div id="s-ai" class="screen">
+  <div class="topbar">
+    <div class="icon-btn" onclick="goTo('s-home')">‹</div>
+    <div class="topbar-center">
+      <div class="topbar-title">Coach IA</div>
+      <div class="topbar-sub">Groq · Llama 3.1</div>
+    </div>
+    <div class="icon-btn" onclick="showKeySetup()" title="Clé API">🔑</div>
+  </div>
+  <div class="content" id="ai-content">
+    <div class="key-setup" id="key-setup-block" style="display:none">
+      <div style="font-size:24px;margin-bottom:10px">🔑</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">Clé API Groq</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Stockée localement sur ton appareil uniquement</div>
+      <input class="key-input" type="password" id="groq-key-input" placeholder="gsk_...">
+      <button class="btn-primary" onclick="saveKey()" style="margin-top:4px">Enregistrer</button>
+    </div>
+    <div id="ai-main">
+      <div class="ai-hero" onclick="getSuggestion()">
+        <div class="ai-hero-label">🤖 Coach IA</div>
+        <div class="ai-hero-title">Suggérer ma prochaine séance</div>
+        <div class="ai-hero-sub">Basé sur tes dernières performances →</div>
+      </div>
+      <div id="ai-suggestion-block" style="display:none">
+        <div class="ai-block">
+          <div class="ai-block-title">💪 Prochaine séance suggérée</div>
+          <div class="ai-content" id="ai-suggestion-text"></div>
+        </div>
+      </div>
+      <div id="ai-analysis-block" style="display:none">
+        <div class="ai-block">
+          <div class="ai-block-title">📊 Analyse de ta dernière séance</div>
+          <div class="ai-content" id="ai-analysis-text"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -196,6 +250,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
   </div>
   <div class="bottombar">
     <button class="btn-primary" onclick="saveSession()">Enregistrer la séance</button>
+    <button class="btn-ghost" onclick="saveAndAnalyse()" style="color:var(--accent);border-color:rgba(200,241,53,0.3)">🤖 Analyser avec le coach IA</button>
     <button class="btn-ghost" onclick="goTo('s-seance')">← Retourner à la séance</button>
   </div>
 </div>
@@ -552,8 +607,108 @@ async function deleteSession() {
   if(confirm('Supprimer cette séance ?')) { await dbDel(viewId); viewId=null; await loadHome(); goTo('s-home'); }
 }
 
+// ── AI COACH ──
+function getKey() { return localStorage.getItem('groq_key') || ''; }
+function saveKey() {
+  const k = document.getElementById('groq-key-input').value.trim();
+  if (!k.startsWith('gsk_')) { alert('Clé invalide — doit commencer par gsk_'); return; }
+  localStorage.setItem('groq_key', k);
+  document.getElementById('key-setup-block').style.display = 'none';
+  alert('Clé sauvegardée ✅');
+}
+function showKeySetup() {
+  const block = document.getElementById('key-setup-block');
+  block.style.display = block.style.display === 'none' ? '' : 'none';
+  document.getElementById('groq-key-input').value = getKey();
+}
+
+function fmtSessionForAI(s) {
+  const dur = s.duration ? fmtDur(s.duration) : '?';
+  const lines = [`Séance : ${s.name} | ${fmtDate(s.startTime)} | ${dur}`];
+  s.exercices.forEach(exo => {
+    if (exo.type === 'cardio') {
+      const c = exo.series[0] || {};
+      lines.push(`- ${exo.name} : ${c.duree||'?'}min @ ${c.vitesse||'?'}km/h incl.${c.inclinaison||'?'}%`);
+    } else {
+      const unit = exo.series[0]?.unit || 'kg';
+      const serStr = exo.series.map(sr => `${sr.charge||'?'}${unit}×${sr.reps||'?'}`).join(', ');
+      lines.push(`- ${exo.name}${exo.tag ? ' ['+exo.tag+']' : ''} : ${serStr}`);
+    }
+  });
+  if (s.notes) lines.push(`Notes : ${s.notes}`);
+  return lines.join('\n');
+}
+
+async function callGroq(systemPrompt, userPrompt, targetEl) {
+  const key = getKey();
+  if (!key) { showKeySetup(); return; }
+  targetEl.innerHTML = '<div class="ai-loading"><div class="ai-spinner"></div><span>Le coach analyse...</span></div>';
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({
+        model: 'llama-3.1-70b-versatile',
+        max_tokens: 1200,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      targetEl.textContent = '❌ Erreur : ' + (err.error?.message || res.status);
+      return;
+    }
+    const data = await res.json();
+    targetEl.textContent = data.choices[0].message.content;
+  } catch(e) {
+    targetEl.textContent = '❌ Erreur réseau : ' + e.message;
+  }
+}
+
+async function getSuggestion() {
+  const sessions = (await dbAll()).sort((a,b) => b.startTime - a.startTime).slice(0, 8);
+  if (!sessions.length) { alert('Aucune séance enregistrée'); return; }
+  const block = document.getElementById('ai-suggestion-block');
+  block.style.display = '';
+  const el = document.getElementById('ai-suggestion-text');
+  const history = sessions.map(fmtSessionForAI).join('\n\n');
+  const sys = `Tu es un coach de musculation expert. Tu analyses l'historique d'entraînement de Lucas et proposes une prochaine séance optimale. 
+Tes principes : progression progressive, récupération musculaire, alternance des groupes musculaires, prévention du surentraînement.
+Réponds en français. Format : nom de séance → exercices avec séries/reps/charges suggérées → conseils clés. Sois concis et actionnable.`;
+  const prompt = `Voici mes ${sessions.length} dernières séances :\n\n${history}\n\nPropose ma prochaine séance optimale.`;
+  await callGroq(sys, prompt, el);
+  block.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function analyseLastSession(session) {
+  goTo('s-ai');
+  const block = document.getElementById('ai-analysis-block');
+  block.style.display = '';
+  const el = document.getElementById('ai-analysis-text');
+  const sessions = (await dbAll()).sort((a,b) => b.startTime - a.startTime).slice(0, 6);
+  const history = sessions.map(fmtSessionForAI).join('\n\n');
+  const sys = `Tu es un coach de musculation expert. Tu analyses la séance de Lucas et donnes un feedback précis.
+Points à couvrir : qualité de la séance, progressions notables, PRs, volume total, points d'amélioration, recommandations pour la récupération.
+Réponds en français. Sois direct, précis, encourageant mais honnête.`;
+  const prompt = `Voici ma séance d'aujourd'hui :\n\n${fmtSessionForAI(session)}\n\nContexte des séances récentes :\n${history}\n\nAnalyse ma séance.`;
+  await callGroq(sys, prompt, el);
+  block.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function saveAndAnalyse() {
+  const session = CS;
+  await saveSession();
+  await analyseLastSession(session);
+}
+
 // ── BOOT ──
-initDB().then(loadHome);
+initDB().then(() => {
+  loadHome();
+  if (!getKey()) setTimeout(()=>{ /* key will be asked when user taps AI */ }, 0);
+});
 </script>
 </body>
 </html>
