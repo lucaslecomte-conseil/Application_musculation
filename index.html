@@ -432,7 +432,10 @@ function selectExo(i) {
   const e = EXOS[i];
   if (!e) return;
   const isC = e.type==='cardio';
+  const isDB = e.tool==='Haltères' || e.tool==='Poulie';
+  const defaultDbMode = e.tool==='Haltères' ? 'single' : 'total';
   CS.exercices.push({ id:uuid(), name:e.name, muscle:e.muscle, tool:e.tool, type:isC?'cardio':'strength',
+    dbMode: isDB ? defaultDbMode : null,
     series: isC ? [{duree:'',vitesse:'',inclinaison:'',done:false}] : [{charge:'',unit:'kg',reps:'',done:false}] });
   document.getElementById('exo-modal').classList.remove('open');
   renderExos();
@@ -440,8 +443,14 @@ function selectExo(i) {
 
 function addCustom() {
   const n = document.getElementById('exo-search').value; if (!n) return;
-  CS.exercices.push({ id:uuid(), name:n, muscle:'Personnalisé', tool:'—', type:'strength', series:[{charge:'',unit:'kg',reps:'',done:false}] });
+  CS.exercices.push({ id:uuid(), name:n, muscle:'Personnalisé', tool:'—', type:'strength', dbMode:null, series:[{charge:'',unit:'kg',reps:'',done:false}] });
   document.getElementById('exo-modal').classList.remove('open');
+  renderExos();
+}
+
+function togDBMode(ei) {
+  if (!CS?.exercices[ei]) return;
+  CS.exercices[ei].dbMode = CS.exercices[ei].dbMode === 'single' ? 'total' : 'single';
   renderExos();
 }
 
@@ -483,14 +492,19 @@ function renderExos() {
       </div>`;
     } else {
       const unit=exo.series[0]?.unit||'kg';
-      body=`<div class="series-header"><span></span><span>Charge <span class="unit-btn" onclick="togUnit(${ei})">${unit}</span></span><span>Reps</span><span></span><span></span></div>
-      ${exo.series.map((s,si)=>`<div class="serie-row${s.done?' done-row':''}">
+      const isDB = exo.dbMode !== null && (exo.tool==='Haltères' || exo.tool==='Poulie');
+      const dbLabel = exo.dbMode==='single' ? '×2 DB' : 'Total';
+      const dbToggle = isDB ? `<span class="unit-btn" onclick="togDBMode(${ei})" title="Mode haltères">${dbLabel}</span>` : '';
+      body=`<div class="series-header"><span></span><span>Charge <span class="unit-btn" onclick="togUnit(${ei})">${unit}</span>${dbToggle}</span><span>Reps</span><span></span><span></span></div>
+      ${exo.series.map((s,si)=>{
+        const displayCharge = s.charge ? (exo.dbMode==='single' ? `2×${s.charge}` : s.charge) : '—';
+        return `<div class="serie-row${s.done?' done-row':''}">
         <span class="serie-num">${si+1}</span>
         <input class="serie-input" type="number" inputmode="decimal" step="0.5" value="${s.charge}" placeholder="—" onchange="updS(${ei},${si},'charge',this.value)">
         <input class="serie-input" type="number" inputmode="numeric" step="1" value="${s.reps}" placeholder="—" onchange="updS(${ei},${si},'reps',this.value)">
         <div class="serie-check${s.done?' done':''}" onclick="togS(${ei},${si})">${s.done?'✓':''}</div>
         <div class="del-serie" onclick="delSerie(${ei},${si})">✕</div>
-      </div>`).join('')}
+      </div>`;}).join('')}
       <div class="add-serie" onclick="addSerie(${ei})"><div class="add-circle">＋</div> Ajouter une série</div>`;
     }
 
@@ -565,8 +579,9 @@ function buildRecap(exo) {
   const max=Math.max(...exo.series.map(s=>parseFloat(s.charge)||0));
   const unit=exo.series[0]?.unit||'kg';
   const tagLabel = exo.tag==='superset'?' <span style="font-size:11px;color:#64a0ff">⚡ Superset</span>':exo.tag==='dropset'?' <span style="font-size:11px;color:#ff8c00">🔥 Dropset</span>':exo.tag==='myset'?' <span style="font-size:11px;color:var(--accent)">💪 Myoset</span>':'';
+  const dbSingle = exo.dbMode === 'single';
   return `<div class="recap-exo"><div class="recap-exo-name">${exo.name}${tagLabel}</div><div class="pills">
-    ${exo.series.map(s=>{ const pr=parseFloat(s.charge)===max&&max>0; return `<div class="pill${pr?' pr':''}">${s.charge||'—'}${unit} × ${s.reps||'—'}${pr?' PR':''}</div>`; }).join('')}
+    ${exo.series.map(s=>{ const pr=parseFloat(s.charge)===max&&max>0; const chargeLabel=dbSingle?`2×${s.charge||'—'}`:(s.charge||'—'); return `<div class="pill${pr?' pr':''}">${chargeLabel}${unit} × ${s.reps||'—'}${pr?' PR':''}</div>`; }).join('')}
   </div></div>`;
 }
 
@@ -631,7 +646,8 @@ function fmtSessionForAI(s) {
       lines.push(`- ${exo.name} : ${c.duree||'?'}min @ ${c.vitesse||'?'}km/h incl.${c.inclinaison||'?'}%`);
     } else {
       const unit = exo.series[0]?.unit || 'kg';
-      const serStr = exo.series.map(sr => `${sr.charge||'?'}${unit}×${sr.reps||'?'}`).join(', ');
+      const dbSingle = exo.dbMode === 'single';
+      const serStr = exo.series.map(sr => dbSingle ? `2×${sr.charge||'?'}${unit}×${sr.reps||'?'}` : `${sr.charge||'?'}${unit}×${sr.reps||'?'}`).join(', ');
       lines.push(`- ${exo.name}${exo.tag ? ' ['+exo.tag+']' : ''} : ${serStr}`);
     }
   });
