@@ -85,6 +85,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
 .exo-opt-btn.danger{color:#ff5a5a;border-color:rgba(255,90,90,0.2);background:rgba(255,90,90,0.06)}
 .ss-bridge{font-size:11px;font-weight:600;color:#64a0ff;padding:0 20px 8px;display:flex;align-items:center;gap:6px}
 .ss-bridge::before{content:'';width:2px;height:14px;background:#64a0ff;border-radius:1px;margin-left:4px;flex-shrink:0}
+.tool-btn{font-size:12px;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer}
+.tool-btn.selected{background:var(--accent-dim);color:var(--accent);border-color:rgba(200,241,53,0.35)}
+.order-btn{width:28px;height:28px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--bg3);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text2);flex-shrink:0}
+.order-btn:active{background:var(--bg4)}
 .cardio-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:14px 16px}
 .cardio-lbl{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px}
 .cardio-done{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 16px;border-top:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--text2)}
@@ -278,6 +282,59 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
   </div>
 </div>
 
+<!-- ═══ MODAL EDIT EXO ═══ -->
+<div class="modal-overlay" id="edit-modal" onclick="closeEditModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Modifier l'exercice</div>
+    <div style="padding:14px 20px;display:flex;flex-direction:column;gap:10px">
+      <div>
+        <div class="cardio-lbl" style="margin-bottom:6px">Nom</div>
+        <input class="modal-input" type="text" id="edit-name" style="margin:0;width:100%">
+      </div>
+      <div>
+        <div class="cardio-lbl" style="margin-bottom:6px">Groupe musculaire</div>
+        <input class="modal-input" type="text" id="edit-muscle" style="margin:0;width:100%">
+      </div>
+      <div>
+        <div class="cardio-lbl" style="margin-bottom:8px">Type d'équipement</div>
+        <div id="edit-tool-btns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+    <div style="padding:0 20px 8px">
+      <button class="btn-primary" onclick="saveEditExo()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL CUSTOM EXO ═══ -->
+<div class="modal-overlay" id="custom-modal" onclick="closeCustomModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nouvel exercice</div>
+    <div style="padding:14px 20px;display:flex;flex-direction:column;gap:10px">
+      <div>
+        <div class="cardio-lbl" style="margin-bottom:6px">Nom</div>
+        <input class="modal-input" type="text" id="custom-name" style="margin:0;width:100%" placeholder="Ex: Curl concentré">
+      </div>
+      <div>
+        <div class="cardio-lbl" style="margin-bottom:6px">Groupe musculaire</div>
+        <input class="modal-input" type="text" id="custom-muscle" style="margin:0;width:100%" placeholder="Ex: Biceps">
+      </div>
+      <div>
+        <div class="cardio-lbl" style="margin-bottom:8px">Type d'équipement</div>
+        <div id="custom-tool-btns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="custom-save" checked style="accent-color:var(--accent)">
+        Sauvegarder dans ma bibliothèque
+      </label>
+    </div>
+    <div style="padding:0 20px 8px">
+      <button class="btn-primary" onclick="confirmCustomExo()">Ajouter à la séance</button>
+    </div>
+  </div>
+</div>
 <script>
 // ── DB ──
 let db;
@@ -428,7 +485,13 @@ function filterExos(q) {
       html+=`<div class="exo-opt" onclick="selectExo(${i})"><div class="exo-opt-name">${e.name}</div><div class="exo-opt-tag">${e.tool}</div></div>`;
     });
   });
-  if (q && !list.length) html=`<div class="exo-opt" onclick="addCustom()"><div class="exo-opt-name">＋ Ajouter "${q}"</div><div class="exo-opt-tag">Personnalisé</div></div>`;
+  if (q && !list.length) html=`<div class="exo-opt" onclick="openCustomModal('${q.replace(/'/g,"\\'")}')"><div class="exo-opt-name">＋ Ajouter "${q}"</div><div class="exo-opt-tag">Personnalisé</div></div>`;
+  // Also show saved custom exos
+  const saved = getSavedExos();
+  if (saved.length && !q) {
+    html = `<div class="exo-section-hdr">⭐ Mes exercices</div>` +
+      saved.map((e,i)=>`<div class="exo-opt" onclick="selectSavedExo(${i})"><div class="exo-opt-name">${e.name}</div><div class="exo-opt-tag">${e.tool}</div></div>`).join('') + html;
+  }
   document.getElementById('exo-options').innerHTML = html;
 }
 
@@ -514,10 +577,13 @@ function renderExos() {
 
     // Options row: tag buttons + delete exo
     const optRow = `<div class="exo-options-row">
-      <span class="exo-opt-btn${tag==='superset'?' active-ss':''}" onclick="togTag(${ei},'superset')">⚡ Superset</span>
-      <span class="exo-opt-btn${tag==='dropset'?' active-ds':''}" onclick="togTag(${ei},'dropset')">🔥 Dropset</span>
-      <span class="exo-opt-btn${tag==='myset'?' active-ms':''}" onclick="togTag(${ei},'myset')">💪 Myoset</span>
-      <span class="exo-opt-btn danger" onclick="delExo(${ei})">🗑 Supprimer</span>
+      <span class="exo-opt-btn" onclick="openEditExo(${ei})">✏️ Modifier</span>
+      <span class="exo-opt-btn${tag==='superset'?' active-ss':''}" onclick="togTag(${ei},'superset')">⚡ SS</span>
+      <span class="exo-opt-btn${tag==='dropset'?' active-ds':''}" onclick="togTag(${ei},'dropset')">🔥 DS</span>
+      <span class="exo-opt-btn${tag==='myset'?' active-ms':''}" onclick="togTag(${ei},'myset')">💪 Myo</span>
+      <span class="order-btn" onclick="moveExo(${ei},-1)" title="Monter">↑</span>
+      <span class="order-btn" onclick="moveExo(${ei},1)" title="Descendre">↓</span>
+      <span class="exo-opt-btn danger" onclick="delExo(${ei})">🗑</span>
     </div>`;
 
     return `${bridgeHtml}<div class="exo-card">
@@ -550,6 +616,93 @@ function addSerie(ei) { if(!CS?.exercices[ei])return; const l=CS.exercices[ei].s
 function delSerie(ei,si) { if(!CS?.exercices[ei])return; if(CS.exercices[ei].series.length<=1){alert('Minimum 1 série');return;} CS.exercices[ei].series.splice(si,1); renderExos(); }
 function delExo(ei) { if(!CS?.exercices[ei])return; if(confirm('Supprimer cet exercice ?')){ CS.exercices.splice(ei,1); renderExos(); } }
 function togTag(ei,tag) { if(!CS?.exercices[ei])return; CS.exercices[ei].tag = CS.exercices[ei].tag===tag ? null : tag; renderExos(); }
+function moveExo(ei, dir) {
+  if (!CS?.exercices) return;
+  const ni = ei + dir;
+  if (ni < 0 || ni >= CS.exercices.length) return;
+  [CS.exercices[ei], CS.exercices[ni]] = [CS.exercices[ni], CS.exercices[ei]];
+  renderExos();
+}
+
+// ── TOOLS LIST ──
+const TOOLS = ['Barre','Haltères','Poulie','Machine','Barre EZ','Poids corps','Cardio','Autre'];
+let editTargetEi = null;
+let selectedEditTool = 'Haltères';
+let selectedCustomTool = 'Haltères';
+
+// ── EDIT MODAL ──
+function openEditExo(ei) {
+  if (!CS?.exercices[ei]) return;
+  editTargetEi = ei;
+  const exo = CS.exercices[ei];
+  document.getElementById('edit-name').value = exo.name;
+  document.getElementById('edit-muscle').value = exo.muscle;
+  selectedEditTool = exo.tool || 'Haltères';
+  renderToolBtns('edit-tool-btns', selectedEditTool);
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEditModal(e) { if(e.target===document.getElementById('edit-modal')) document.getElementById('edit-modal').classList.remove('open'); }
+function saveEditExo() {
+  if (editTargetEi === null || !CS?.exercices[editTargetEi]) return;
+  const exo = CS.exercices[editTargetEi];
+  exo.name = document.getElementById('edit-name').value.trim() || exo.name;
+  exo.muscle = document.getElementById('edit-muscle').value.trim() || exo.muscle;
+  exo.tool = selectedEditTool;
+  const isDB = selectedEditTool==='Haltères' || selectedEditTool==='Poulie';
+  if (isDB && exo.dbMode === null) exo.dbMode = selectedEditTool==='Haltères' ? 'single' : 'total';
+  if (!isDB) exo.dbMode = null;
+  document.getElementById('edit-modal').classList.remove('open');
+  renderExos();
+}
+
+// ── CUSTOM MODAL ──
+function openCustomModal(name) {
+  document.getElementById('custom-name').value = name || '';
+  document.getElementById('custom-muscle').value = '';
+  selectedCustomTool = 'Haltères';
+  renderToolBtns('custom-tool-btns', selectedCustomTool);
+  document.getElementById('exo-modal').classList.remove('open');
+  document.getElementById('custom-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('custom-name').focus(), 200);
+}
+function closeCustomModal(e) { if(e.target===document.getElementById('custom-modal')) document.getElementById('custom-modal').classList.remove('open'); }
+function confirmCustomExo() {
+  const name = document.getElementById('custom-name').value.trim();
+  const muscle = document.getElementById('custom-muscle').value.trim() || 'Personnalisé';
+  if (!name) { alert('Donne un nom à l\'exercice'); return; }
+  const isDB = selectedCustomTool==='Haltères' || selectedCustomTool==='Poulie';
+  const dbMode = isDB ? (selectedCustomTool==='Haltères' ? 'single' : 'total') : null;
+  const exo = { id:uuid(), name, muscle, tool:selectedCustomTool, type:'strength', dbMode, series:[{charge:'',unit:'kg',reps:'',done:false}] };
+  if (document.getElementById('custom-save').checked) saveCustomExo({name, muscle, tool:selectedCustomTool});
+  CS.exercices.push(exo);
+  document.getElementById('custom-modal').classList.remove('open');
+  renderExos();
+}
+
+// ── TOOL BUTTONS RENDERER ──
+function renderToolBtns(containerId, selected) {
+  document.getElementById(containerId).innerHTML = TOOLS.map(t=>
+    `<span class="tool-btn${t===selected?' selected':''}" onclick="selectTool('${containerId}','${t}')">${t}</span>`
+  ).join('');
+}
+function selectTool(containerId, t) {
+  if (containerId==='edit-tool-btns') selectedEditTool=t;
+  else selectedCustomTool=t;
+  renderToolBtns(containerId, t);
+}
+
+// ── SAVED CUSTOM EXOS ──
+function getSavedExos() { try { return JSON.parse(localStorage.getItem('customExos')||'[]'); } catch{ return []; } }
+function saveCustomExo(e) { const list=getSavedExos(); if(!list.find(x=>x.name===e.name)) { list.push(e); localStorage.setItem('customExos',JSON.stringify(list)); } }
+function selectSavedExo(i) {
+  const e = getSavedExos()[i]; if (!e) return;
+  const isDB = e.tool==='Haltères' || e.tool==='Poulie';
+  CS.exercices.push({ id:uuid(), name:e.name, muscle:e.muscle, tool:e.tool, type:'strength',
+    dbMode: isDB ? (e.tool==='Haltères'?'single':'total') : null,
+    series:[{charge:'',unit:'kg',reps:'',done:false}] });
+  document.getElementById('exo-modal').classList.remove('open');
+  renderExos();
+}
 
 // ── FINISH ──
 function finishSession() {
