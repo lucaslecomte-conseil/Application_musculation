@@ -440,7 +440,18 @@ async function loadHome() {
     <div class="hist-arrow">›</div></div>`).join('');
 }
 
-// ── SESSION ──
+// ── AUTO-SAVE SESSION EN COURS ──
+function persistCS() {
+  if (CS) localStorage.setItem('cs_draft', JSON.stringify(CS));
+  else localStorage.removeItem('cs_draft');
+}
+function restoreCS() {
+  try {
+    const d = localStorage.getItem('cs_draft');
+    if (d) { CS = JSON.parse(d); return true; }
+  } catch(e) {}
+  return false;
+}
 function startNewSession() {
   CS = { id:uuid(), startTime:Date.now(), name:'', exercices:[], duration:0, photos:[], notes:'' };
   sPhotos = [];
@@ -452,7 +463,12 @@ function startNewSession() {
 }
 
 function confirmQuit() {
-  if (confirm('Abandonner la séance ?')) { clearInterval(sTI); clearInterval(rTI); goTo('s-home'); }
+  if (confirm('Abandonner la séance ?')) {
+    clearInterval(sTI); clearInterval(rTI);
+    localStorage.removeItem('cs_draft');
+    CS = null;
+    goTo('s-home');
+  }
 }
 
 // ── REST ──
@@ -526,6 +542,7 @@ const closedBodies = new Set();
 
 function renderExos() {
   if (!CS) return;
+  persistCS(); // auto-save à chaque render
   // Save current collapse state before re-rendering
   CS.exercices.forEach((_,ei) => {
     const b = document.getElementById('bdy'+ei);
@@ -751,7 +768,9 @@ function handlePhotos(input) {
 async function saveSession() {
   CS.notes=document.getElementById('recap-notes').value;
   CS.photos=sPhotos;
-  await dbPut(CS); CS=null; await loadHome(); goTo('s-home');
+  await dbPut(CS);
+  localStorage.removeItem('cs_draft'); // nettoie le brouillon
+  CS=null; await loadHome(); goTo('s-home');
 }
 
 // ── DETAIL ──
@@ -878,9 +897,18 @@ async function saveAndAnalyse() {
 }
 
 // ── BOOT ──
-initDB().then(() => {
-  loadHome();
-  if (!getKey()) setTimeout(()=>{ /* key will be asked when user taps AI */ }, 0);
+initDB().then(async () => {
+  await loadHome();
+  // Restaure une séance en cours si l'app a été fermée
+  if (restoreCS()) {
+    closedBodies.clear();
+    goTo('s-seance');
+    clearInterval(sTI);
+    sTI = setInterval(()=>{ const el=document.getElementById('session-clock'); if(el){const s=Math.floor((Date.now()-CS.startTime)/1000);el.textContent=pad(Math.floor(s/60))+':'+pad(s%60);} },1000);
+    renderExos();
+    // Notification discrète
+    setTimeout(()=>{ const el=document.getElementById('session-clock'); if(el) el.title='Séance restaurée'; },500);
+  }
 });
 </script>
 </body>
