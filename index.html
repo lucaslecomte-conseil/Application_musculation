@@ -190,6 +190,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
           <div class="ai-block-title">💪 Prochaine séance suggérée</div>
           <div class="ai-content" id="ai-suggestion-text"></div>
         </div>
+        <button class="btn-primary" id="ai-load-btn" style="display:none;margin-bottom:16px" onclick="loadSuggestionAsSession()">🏋️ Démarrer cette séance</button>
       </div>
       <div id="ai-analysis-block" style="display:none">
         <div class="ai-block">
@@ -860,19 +861,105 @@ async function callGroq(systemPrompt, userPrompt, targetEl) {
   }
 }
 
+let lastSuggestion = null; // stocke la séance suggérée parsée
+
 async function getSuggestion() {
   const sessions = (await dbAll()).sort((a,b) => b.startTime - a.startTime).slice(0, 8);
   if (!sessions.length) { alert('Aucune séance enregistrée'); return; }
   const block = document.getElementById('ai-suggestion-block');
   block.style.display = '';
   const el = document.getElementById('ai-suggestion-text');
+  document.getElementById('ai-load-btn').style.display = 'none';
+  lastSuggestion = null;
   const history = sessions.map(fmtSessionForAI).join('\n\n');
-  const sys = `Tu es un coach de musculation expert. Tu analyses l'historique d'entraînement de Lucas et proposes une prochaine séance optimale. 
+
+  const sys = `Tu es un coach de musculation expert. Tu analyses l'historique d'entraînement de Lucas et proposes une prochaine séance optimale.
 Tes principes : progression progressive, récupération musculaire, alternance des groupes musculaires, prévention du surentraînement.
-Réponds en français. Format : nom de séance → exercices avec séries/reps/charges suggérées → conseils clés. Sois concis et actionnable.`;
-  const prompt = `Voici mes ${sessions.length} dernières séances :\n\n${history}\n\nPropose ma prochaine séance optimale.`;
-  await callGroq(sys, prompt, el);
+
+Tu dois répondre UNIQUEMENT avec un JSON valide, sans texte avant ou après, sans balises markdown, sans backticks.
+Format exact :
+{
+  "nom": "Nom de la séance",
+  "conseils": "2-3 phrases de conseils clés",
+  "exercices": [
+    {
+      "nom": "Nom exercice",
+      "muscle": "Groupe musculaire",
+      "outil": "Barre|Haltères|Poulie|Machine|Poids corps",
+      "series": [
+        { "charge": 80, "unit": "kg", "reps": 8 }
+      ]
+    }
+  ]
+}`;
+
+  const prompt = `Voici mes ${sessions.length} dernières séances :\n\n${history}\n\nPropose ma prochaine séance optimale en JSON.`;
+
+  const key = getKey();
+  if (!key) { showKeySetup(); return; }
+  el.innerHTML = '<div class="ai-loading"><div class="ai-spinner"></div><span>Le coach prépare ta séance...</span></div>';
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 1500,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }]
+      })
+    });
+    if (!res.ok) { const err = await res.json(); el.textContent = '❌ ' + (err.error?.message || res.status); return; }
+    const data = await res.json();
+    const raw = data.choices[0].message.content.trim().replace(/```json|```/g, '').trim();
+
+    try {
+      lastSuggestion = JSON.parse(raw);
+      // Affichage lisible
+      let html = `<strong style="color:var(--text);font-size:15px">${lastSuggestion.nom}</strong>\n\n`;
+      html += `<span style="color:var(--text2);font-style:italic">${lastSuggestion.conseils}</span>\n\n`;
+      lastSuggestion.exercices.forEach((ex, i) => {
+        html += `<strong>${i+1}. ${ex.nom}</strong> — ${ex.muscle} · ${ex.outil}\n`;
+        ex.series.forEach((s, si) => { html += `   Série ${si+1} : ${s.charge}${s.unit} × ${s.reps} reps\n`; });
+        html += '\n';
+      });
+      el.textContent = html;
+      document.getElementById('ai-load-btn').style.display = '';
+    } catch(e) {
+      // Si le JSON est invalide, affiche le texte brut quand même
+      el.textContent = raw;
+    }
+  } catch(e) {
+    el.textContent = '❌ Erreur réseau : ' + e.message;
+  }
   block.scrollIntoView({ behavior: 'smooth' });
+}
+
+function loadSuggestionAsSession() {
+  if (!lastSuggestion) return;
+  if (CS && !confirm('Une séance est déjà en cours. La remplacer ?')) return;
+
+  CS = {
+    id: uuid(), startTime: Date.now(),
+    name: lastSuggestion.nom || 'Séance IA',
+    exercices: lastSuggestion.exercices.map(ex => {
+      const isDB = ex.outil === 'Haltères' || ex.outil === 'Poulie';
+      return {
+        id: uuid(), name: ex.nom, muscle: ex.muscle, tool: ex.outil,
+        type: 'strength', tag: null,
+        dbMode: isDB ? (ex.outil === 'Haltères' ? 'single' : 'total') : null,
+        series: ex.series.map(s => ({ charge: String(s.charge), unit: s.unit || 'kg', reps: String(s.reps), done: false }))
+      };
+    }),
+    duration: 0, photos: [], notes: ''
+  };
+  sPhotos = [];
+  closedBodies.clear();
+  persistCS();
+  goTo('s-seance');
+  clearInterval(sTI);
+  sTI = setInterval(()=>{ const el=document.getElementById('session-clock'); if(el){const s=Math.floor((Date.now()-CS.startTime)/1000);el.textContent=pad(Math.floor(s/60))+':'+pad(s%60);} },1000);
+  renderExos();
 }
 
 async function analyseLastSession(session) {
