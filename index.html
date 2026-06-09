@@ -136,6 +136,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
 .ai-hero-label{font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--accent);text-transform:uppercase;margin-bottom:6px}
 .ai-hero-title{font-size:17px;font-weight:600;letter-spacing:-0.02em;margin-bottom:3px}
 .ai-hero-sub{font-size:13px;color:var(--text2)}
+.chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px}
+.chart-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;letter-spacing:-0.01em}
+.chart-sub{font-size:11px;color:var(--text3);margin-top:6px}
+.exo-selector{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;margin-bottom:14px;appearance:none}
+.exo-selector:focus{outline:none;border-color:rgba(200,241,53,0.4)}
+.muscle-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.muscle-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
+.muscle-card-name{font-size:12px;color:var(--text2);margin-bottom:6px}
+.muscle-card-val{font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+.muscle-card-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.pr-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.pr-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px}
+.pr-name{font-size:13px;font-weight:500;color:var(--text)}
+.pr-val{font-size:13px;font-family:'DM Mono',monospace;color:var(--accent)}
 </style>
 </head>
 <body>
@@ -149,6 +163,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
       <div class="topbar-sub" id="home-date"></div>
     </div>
     <div class="icon-btn" onclick="goTo('s-ai')">🤖</div>
+    <div class="icon-btn" onclick="openStats()">📊</div>
   </div>
   <div class="content">
     <div class="home-hero" onclick="startNewSession()">
@@ -158,6 +173,47 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
     </div>
     <div class="section-label">Historique</div>
     <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- ═══ STATS ═══ -->
+<div id="s-stats" class="screen">
+  <div class="topbar">
+    <div class="icon-btn" onclick="goTo('s-home')">‹</div>
+    <div class="topbar-center">
+      <div class="topbar-title">Progression</div>
+      <div class="topbar-sub" id="stats-sub"></div>
+    </div>
+    <div style="width:38px"></div>
+  </div>
+  <div class="content">
+    <!-- Résumé global -->
+    <div class="stats-grid" id="stats-global"></div>
+
+    <!-- PRs -->
+    <div class="section-label">🏆 Records personnels</div>
+    <div class="pr-list" id="stats-prs"></div>
+
+    <!-- Volume par séance -->
+    <div class="section-label">📈 Volume total</div>
+    <div class="chart-wrap">
+      <div class="chart-title">kg soulevés par séance</div>
+      <svg id="chart-volume" width="100%" height="140" viewBox="0 0 320 140" preserveAspectRatio="none"></svg>
+      <div class="chart-sub" id="chart-volume-sub"></div>
+    </div>
+
+    <!-- Évolution par exercice -->
+    <div class="section-label">💪 Évolution par exercice</div>
+    <select class="exo-selector" id="exo-select" onchange="renderExoChart()"></select>
+    <div class="chart-wrap">
+      <div class="chart-title" id="exo-chart-title">Charge maximale par séance</div>
+      <svg id="chart-exo" width="100%" height="140" viewBox="0 0 320 140" preserveAspectRatio="none"></svg>
+      <div class="chart-sub" id="chart-exo-sub"></div>
+    </div>
+
+    <!-- Stats par muscle -->
+    <div class="section-label">🔥 Volume par groupe musculaire</div>
+    <div class="muscle-grid" id="stats-muscles"></div>
   </div>
 </div>
 
@@ -960,12 +1016,17 @@ function loadSuggestionAsSession() {
     id: uuid(), startTime: Date.now(),
     name: lastSuggestion.nom || 'Séance IA',
     exercices: lastSuggestion.exercices.map(ex => {
-      const isDB = ex.outil === 'Haltères' || ex.outil === 'Poulie';
+      const isCardio = ex.type === 'cardio' || ex.outil === 'Cardio';
+      const isDB = !isCardio && (ex.outil === 'Haltères' || ex.outil === 'Poulie');
       return {
-        id: uuid(), name: ex.nom, muscle: ex.muscle, tool: ex.outil,
-        type: 'strength', tag: null,
+        id: uuid(), name: ex.nom, muscle: ex.muscle || 'Cardio',
+        tool: isCardio ? 'Cardio' : ex.outil,
+        type: isCardio ? 'cardio' : 'strength',
+        tag: null,
         dbMode: isDB ? (ex.outil === 'Haltères' ? 'single' : 'total') : null,
-        series: ex.series.map(s => ({ charge: String(s.charge), unit: s.unit || 'kg', reps: String(s.reps), done: false }))
+        series: isCardio
+          ? [{ duree: String(ex.series?.[0]?.charge || ''), vitesse: '4', inclinaison: '10', done: false }]
+          : ex.series.map(s => ({ charge: String(s.charge), unit: s.unit || 'kg', reps: String(s.reps), done: false }))
       };
     }),
     duration: 0, photos: [], notes: ''
@@ -998,6 +1059,140 @@ async function saveAndAnalyse() {
   const session = CS;
   await saveSession();
   await analyseLastSession(session);
+}
+
+// ── STATS ──
+async function openStats() {
+  const sessions = (await dbAll()).sort((a,b) => a.startTime - b.startTime);
+  if (!sessions.length) { alert('Aucune séance enregistrée'); return; }
+  goTo('s-stats');
+  document.getElementById('stats-sub').textContent = sessions.length + ' séances';
+
+  // ── Global summary ──
+  const totalVol = Math.round(sessions.reduce((t,s) => t + calcVol(s.exercices), 0));
+  const totalSer = sessions.reduce((t,s) => t + s.exercices.filter(e=>e.type!=='cardio').reduce((x,e)=>x+e.series.length,0), 0);
+  const avgDur = Math.round(sessions.filter(s=>s.duration).reduce((t,s)=>t+s.duration,0) / sessions.filter(s=>s.duration).length / 60);
+  document.getElementById('stats-global').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${sessions.length}</div><div class="stat-lbl">Séances</div></div>
+    <div class="stat-card"><div class="stat-val">${Math.round(totalVol/1000)}k</div><div class="stat-lbl">kg total</div></div>
+    <div class="stat-card"><div class="stat-val">${avgDur||'—'}</div><div class="stat-lbl">min moy.</div></div>`;
+
+  // ── PRs ──
+  const prs = {};
+  sessions.forEach(s => {
+    s.exercices.filter(e=>e.type!=='cardio').forEach(exo => {
+      const unit = exo.series[0]?.unit || 'kg';
+      const max = Math.max(...exo.series.map(sr => parseFloat(sr.charge)||0));
+      if (max > 0 && (!prs[exo.name] || max > prs[exo.name].val)) {
+        prs[exo.name] = { val: max, unit, date: fmtDate(s.startTime) };
+      }
+    });
+  });
+  const prsSorted = Object.entries(prs).sort((a,b) => b[1].val - a[1].val).slice(0, 8);
+  document.getElementById('stats-prs').innerHTML = prsSorted.map(([name, pr]) =>
+    `<div class="pr-item"><div class="pr-name">${name}</div><div class="pr-val">${pr.val} ${pr.unit}</div></div>`
+  ).join('') || '<div style="color:var(--text3);font-size:13px">Aucun PR enregistré</div>';
+
+  // ── Volume chart ──
+  const volData = sessions.slice(-12).map(s => ({
+    label: new Date(s.startTime).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+    val: Math.round(calcVol(s.exercices))
+  })).filter(d => d.val > 0);
+  renderLineChart('chart-volume', volData, '#c8f135');
+  document.getElementById('chart-volume-sub').textContent = volData.length + ' dernières séances de force';
+
+  // ── Exo selector ──
+  const exoNames = [...new Set(sessions.flatMap(s => s.exercices.filter(e=>e.type!=='cardio').map(e=>e.name)))].sort();
+  const sel = document.getElementById('exo-select');
+  sel.innerHTML = exoNames.map(n => `<option value="${n}">${n}</option>`).join('');
+  window._statsessions = sessions;
+  renderExoChart();
+
+  // ── Muscle volume ──
+  const muscleVol = {};
+  sessions.forEach(s => {
+    s.exercices.filter(e=>e.type!=='cardio').forEach(exo => {
+      const vol = exo.series.reduce((t,sr) => t + (parseFloat(sr.charge)||0)*(parseInt(sr.reps)||0), 0);
+      muscleVol[exo.muscle] = (muscleVol[exo.muscle] || 0) + vol;
+    });
+  });
+  const muscleSorted = Object.entries(muscleVol).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxMuscleVol = muscleSorted[0]?.[1] || 1;
+  document.getElementById('stats-muscles').innerHTML = muscleSorted.map(([muscle, vol]) => `
+    <div class="muscle-card">
+      <div class="muscle-card-name">${muscle}</div>
+      <div class="muscle-card-val">${Math.round(vol/1000)}k</div>
+      <div class="muscle-card-sub">kg soulevés</div>
+      <div style="height:3px;background:var(--bg4);border-radius:2px;margin-top:8px">
+        <div style="height:3px;background:var(--accent);border-radius:2px;width:${Math.round(vol/maxMuscleVol*100)}%"></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderExoChart() {
+  const allSessions = window._statsessions;
+  if (!allSessions) return;
+  const name = document.getElementById('exo-select').value;
+  document.getElementById('exo-chart-title').textContent = name + ' — charge max';
+  const data = [];
+  allSessions.forEach(s => {
+    const exo = s.exercices.find(e => e.name === name);
+    if (exo) {
+      const max = Math.max(...exo.series.map(sr => parseFloat(sr.charge)||0));
+      const unit = exo.series[0]?.unit || 'kg';
+      if (max > 0) data.push({ label: new Date(s.startTime).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}), val: max, unit });
+    }
+  });
+  if (!data.length) { document.getElementById('chart-exo-sub').textContent = 'Pas encore de données pour cet exercice'; return; }
+  renderLineChart('chart-exo', data, '#64a0ff');
+  const last = data[data.length-1];
+  const first = data[0];
+  const diff = last.val - first.val;
+  document.getElementById('chart-exo-sub').textContent =
+    `${data.length} séances · ${first.val}→${last.val} ${last.unit} (${diff >= 0 ? '+' : ''}${diff} ${last.unit})`;
+}
+
+function renderLineChart(svgId, data, color) {
+  const svg = document.getElementById(svgId);
+  if (!svg || !data.length) return;
+  const W = 320, H = 140, PX = 24, PY = 16;
+  const vals = data.map(d => d.val);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+  const xStep = (W - PX*2) / Math.max(data.length - 1, 1);
+
+  const pts = data.map((d, i) => ({
+    x: PX + i * xStep,
+    y: PY + (1 - (d.val - minV) / range) * (H - PY*2 - 20)
+  }));
+
+  const pathD = pts.map((p,i) => (i===0?`M${p.x},${p.y}`:`L${p.x},${p.y}`)).join(' ');
+  const fillD = pathD + ` L${pts[pts.length-1].x},${H-20} L${pts[0].x},${H-20} Z`;
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="grad-${svgId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <!-- Grid lines -->
+    ${[0,0.5,1].map(t => {
+      const y = PY + t * (H - PY*2 - 20);
+      const v = Math.round(maxV - t * range);
+      return `<line x1="${PX}" y1="${y}" x2="${W-PX}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+              <text x="${PX-4}" y="${y+4}" font-size="9" fill="rgba(255,255,255,0.3)" text-anchor="end">${v}</text>`;
+    }).join('')}
+    <!-- Fill -->
+    <path d="${fillD}" fill="url(#grad-${svgId})"/>
+    <!-- Line -->
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- Dots + labels -->
+    ${pts.map((p,i) => `
+      <circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}"/>
+      <text x="${p.x}" y="${H-6}" font-size="9" fill="rgba(255,255,255,0.35)" text-anchor="middle">${data[i].label}</text>
+    `).join('')}
+  `;
 }
 
 // ── BOOT ──
