@@ -152,6 +152,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
 .pr-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px}
 .pr-name{font-size:13px;font-weight:500;color:var(--text)}
 .pr-val{font-size:13px;font-family:'DM Mono',monospace;color:var(--accent)}
+.body-hero{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.body-hero:active{border-color:var(--border2)}
+.body-hero-left{display:flex;align-items:center;gap:12px}
+.body-hero-icon{font-size:22px}
+.body-hero-title{font-size:14px;font-weight:600}
+.body-hero-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.body-form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.body-form-field{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.body-form-label{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px}
+.body-form-input{width:100%;background:transparent;border:none;color:var(--text);font-size:15px;font-family:'DM Mono',monospace}
+.body-form-input:focus{outline:none}
+.body-entry{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.body-entry-date{font-size:12px;color:var(--text2);font-family:'DM Mono',monospace}
+.body-entry-vals{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.body-entry-val{font-size:13px;color:var(--text)}
+.body-entry-del{color:#ff5a5a;font-size:13px;cursor:pointer;padding:4px 8px}
 </style>
 </head>
 <body>
@@ -173,8 +189,73 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
       <div class="hero-title">Nouvelle séance</div>
       <div class="hero-sub">Commencer l'entraînement →</div>
     </div>
+    <div class="body-hero" onclick="goTo('s-body'); renderBodyScreen();">
+      <div class="body-hero-left">
+        <span class="body-hero-icon">📏</span>
+        <div>
+          <div class="body-hero-title">Suivi corporel</div>
+          <div class="body-hero-sub">Poids, mensurations, composition</div>
+        </div>
+      </div>
+      <span style="color:var(--text3)">›</span>
+    </div>
     <div class="section-label">Historique</div>
     <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- ═══ BODY TRACKING ═══ -->
+<div id="s-body" class="screen">
+  <div class="topbar">
+    <div class="icon-btn" onclick="goTo('s-home')">‹</div>
+    <div class="topbar-center">
+      <div class="topbar-title">Suivi Corps</div>
+      <div class="topbar-sub" id="body-sub"></div>
+    </div>
+    <div style="width:38px"></div>
+  </div>
+  <div class="content">
+    <div class="chart-wrap" id="body-chart-wrap" style="display:none">
+      <div class="chart-title">Évolution du poids</div>
+      <svg id="chart-body-weight" width="100%" height="140" viewBox="0 0 320 140" preserveAspectRatio="none"></svg>
+      <div class="chart-sub" id="chart-body-sub"></div>
+    </div>
+
+    <div class="section-label">Nouvelle mesure</div>
+    <div class="body-form-row">
+      <div class="body-form-field">
+        <div class="body-form-label">Poids (kg)</div>
+        <input class="body-form-input" type="number" step="0.1" id="body-weight" placeholder="75.5">
+      </div>
+      <div class="body-form-field">
+        <div class="body-form-label">Taille (cm)</div>
+        <input class="body-form-input" type="number" id="body-height" placeholder="178">
+      </div>
+    </div>
+    <div class="body-form-row">
+      <div class="body-form-field">
+        <div class="body-form-label">Masse grasse (%)</div>
+        <input class="body-form-input" type="number" step="0.1" id="body-fat" placeholder="15.0">
+      </div>
+      <div class="body-form-field">
+        <div class="body-form-label">Tour de taille (cm)</div>
+        <input class="body-form-input" type="number" step="0.1" id="body-waist" placeholder="82">
+      </div>
+    </div>
+    <div class="body-form-row">
+      <div class="body-form-field">
+        <div class="body-form-label">Tour de bras (cm)</div>
+        <input class="body-form-input" type="number" step="0.1" id="body-arm" placeholder="38">
+      </div>
+      <div class="body-form-field">
+        <div class="body-form-label">Tour de poitrine (cm)</div>
+        <input class="body-form-input" type="number" step="0.1" id="body-chest" placeholder="105">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveBodyEntry()" style="margin-bottom:20px">Enregistrer la mesure</button>
+
+    <div class="section-label">Historique</div>
+    <div id="body-history"></div>
   </div>
 </div>
 
@@ -399,10 +480,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
 let db;
 function initDB() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open('CoachDePoche', 1);
+    const r = indexedDB.open('CoachDePoche', 2);
     r.onupgradeneeded = e => {
-      if (!e.target.result.objectStoreNames.contains('sessions'))
-        e.target.result.createObjectStore('sessions', { keyPath: 'id' });
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('sessions')) d.createObjectStore('sessions', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('bodyEntries')) d.createObjectStore('bodyEntries', { keyPath: 'id' });
     };
     r.onsuccess = e => { db = e.target.result; res(); };
     r.onerror = () => rej(r.error);
@@ -411,6 +493,9 @@ function initDB() {
 const dbPut = d => new Promise((res,rej) => { const tx=db.transaction('sessions','readwrite'); tx.objectStore('sessions').put(d).onsuccess=()=>res(); tx.onerror=()=>rej(tx.error); });
 const dbAll = () => new Promise((res,rej) => { const tx=db.transaction('sessions','readonly'); const r=tx.objectStore('sessions').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
 const dbDel = k => new Promise((res,rej) => { const tx=db.transaction('sessions','readwrite'); tx.objectStore('sessions').delete(k).onsuccess=()=>res(); tx.onerror=()=>rej(tx.error); });
+const bodyPut = d => new Promise((res,rej) => { const tx=db.transaction('bodyEntries','readwrite'); tx.objectStore('bodyEntries').put(d).onsuccess=()=>res(); tx.onerror=()=>rej(tx.error); });
+const bodyAll = () => new Promise((res,rej) => { const tx=db.transaction('bodyEntries','readonly'); const r=tx.objectStore('bodyEntries').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const bodyDel = k => new Promise((res,rej) => { const tx=db.transaction('bodyEntries','readwrite'); tx.objectStore('bodyEntries').delete(k).onsuccess=()=>res(); tx.onerror=()=>rej(tx.error); });
 
 // ── STATE ──
 let CS = null; // current session
@@ -989,6 +1074,7 @@ let lastSuggestion = null; // stocke la séance suggérée parsée
 async function getSuggestion() {
   const sessions = (await dbAll()).sort((a,b) => b.startTime - a.startTime).slice(0, 8);
   if (!sessions.length) { alert('Aucune séance enregistrée'); return; }
+  const bodyEntries = (await bodyAll()).sort((a,b) => b.date - a.date).slice(0, 3);
   const block = document.getElementById('ai-suggestion-block');
   block.style.display = '';
   const el = document.getElementById('ai-suggestion-text');
@@ -1035,7 +1121,7 @@ Format exact :
   ]
 }`;
 
-  const prompt = `Voici mes ${sessions.length} dernières séances :\n\n${history}\n\nPropose ma prochaine séance optimale en JSON.`;
+  const prompt = `Voici mes ${sessions.length} dernières séances :\n\n${history}\n\n${bodyEntries.length ? `Mes dernières mesures corporelles :\n${bodyEntries.map(e=>`${fmtDate(e.date)} : ${e.weight?e.weight+'kg ':''}${e.fat?e.fat+'% MG ':''}${e.waist?'taille '+e.waist+'cm ':''}${e.arm?'bras '+e.arm+'cm':''}`).join('\n')}\n\n` : ''}Propose ma prochaine séance optimale en JSON.`;
 
   const key = getKey();
   if (!key) { showKeySetup(); return; }
@@ -1262,6 +1348,63 @@ function renderLineChart(svgId, data, color) {
       <text x="${p.x}" y="${H-6}" font-size="9" fill="rgba(255,255,255,0.35)" text-anchor="middle">${data[i].label}</text>
     `).join('')}
   `;
+}
+
+// ── BODY TRACKING ──
+async function saveBodyEntry() {
+  const weight = document.getElementById('body-weight').value;
+  const height = document.getElementById('body-height').value;
+  const fat = document.getElementById('body-fat').value;
+  const waist = document.getElementById('body-waist').value;
+  const arm = document.getElementById('body-arm').value;
+  const chest = document.getElementById('body-chest').value;
+  if (!weight && !height && !fat && !waist && !arm && !chest) { alert('Renseigne au moins une donnée'); return; }
+  const entry = { id: uuid(), date: Date.now(), weight, height, fat, waist, arm, chest };
+  await bodyPut(entry);
+  ['body-weight','body-height','body-fat','body-waist','body-arm','body-chest'].forEach(id => document.getElementById(id).value = '');
+  await renderBodyScreen();
+}
+
+async function deleteBodyEntry(id) {
+  if (confirm('Supprimer cette mesure ?')) { await bodyDel(id); await renderBodyScreen(); }
+}
+
+async function renderBodyScreen() {
+  const entries = (await bodyAll()).sort((a,b) => b.date - a.date);
+  document.getElementById('body-sub').textContent = entries.length + ' mesure' + (entries.length>1?'s':'');
+
+  // History list
+  document.getElementById('body-history').innerHTML = entries.length ? entries.map(e => {
+    const vals = [];
+    if (e.weight) vals.push(`⚖️ ${e.weight}kg`);
+    if (e.height) vals.push(`📏 ${e.height}cm`);
+    if (e.fat) vals.push(`📊 ${e.fat}% MG`);
+    if (e.waist) vals.push(`Taille ${e.waist}cm`);
+    if (e.arm) vals.push(`Bras ${e.arm}cm`);
+    if (e.chest) vals.push(`Poitrine ${e.chest}cm`);
+    return `<div class="body-entry">
+      <div>
+        <div class="body-entry-date">${fmtDate(e.date)}</div>
+        <div class="body-entry-vals">${vals.map(v=>`<span class="body-entry-val">${v}</span>`).join(' · ')}</div>
+      </div>
+      <span class="body-entry-del" onclick="deleteBodyEntry('${e.id}')">🗑</span>
+    </div>`;
+  }).join('') : '<div class="empty-state" style="padding:20px 0"><div style="font-size:13px">Aucune mesure enregistrée</div></div>';
+
+  // Weight evolution chart
+  const weightData = entries.slice().reverse().filter(e => e.weight).map(e => ({
+    label: new Date(e.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+    val: parseFloat(e.weight)
+  }));
+  const chartWrap = document.getElementById('body-chart-wrap');
+  if (weightData.length >= 2) {
+    chartWrap.style.display = '';
+    renderLineChart('chart-body-weight', weightData, '#c8f135');
+    const diff = (weightData[weightData.length-1].val - weightData[0].val).toFixed(1);
+    document.getElementById('chart-body-sub').textContent = `${weightData[0].val}kg → ${weightData[weightData.length-1].val}kg (${diff>=0?'+':''}${diff}kg)`;
+  } else {
+    chartWrap.style.display = 'none';
+  }
 }
 
 // ── BOOT ──
