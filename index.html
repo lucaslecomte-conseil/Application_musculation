@@ -82,6 +82,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
 .exo-opt-btn.active-ss{color:#64a0ff;border-color:rgba(100,160,255,0.35);background:rgba(100,160,255,0.1)}
 .exo-opt-btn.active-ds{color:#ff8c00;border-color:rgba(255,140,0,0.35);background:rgba(255,140,0,0.1)}
 .exo-opt-btn.active-ms{color:var(--accent);border-color:rgba(200,241,53,0.35);background:var(--accent-dim)}
+.exo-opt-btn.active-warmup{color:#ffb84d;border-color:rgba(255,184,77,0.35);background:rgba(255,184,77,0.1)}
+.exo-opt-btn.active-finisher{color:#ff6b9d;border-color:rgba(255,107,157,0.35);background:rgba(255,107,157,0.1)}
 .exo-opt-btn.danger{color:#ff5a5a;border-color:rgba(255,90,90,0.2);background:rgba(255,90,90,0.06)}
 .ss-bridge{font-size:11px;font-weight:600;color:#64a0ff;padding:0 20px 8px;display:flex;align-items:center;gap:6px}
 .ss-bridge::before{content:'';width:2px;height:14px;background:#64a0ff;border-radius:1px;margin-left:4px;flex-shrink:0}
@@ -443,7 +445,7 @@ const EXOS = [
   {name:'Rowing barre',muscle:'Dos',tool:'Barre'},
   {name:'Face Away Cable Pullover',muscle:'Dos',tool:'Poulie'},
   {name:'Straight Arm Pulldown',muscle:'Dos',tool:'Poulie'},
-  {name:'Traction',muscle:'Dos',tool:'Poids corps'},
+  {name:'Traction',muscle:'Dos',tool:'Poids corps',bwMode:'reps'},
   {name:'Back Extension',muscle:'Dos',tool:'Machine'},
   {name:'Curl Câble',muscle:'Biceps',tool:'Poulie'},
   {name:'Curl Machine',muscle:'Biceps',tool:'Machine'},
@@ -453,7 +455,7 @@ const EXOS = [
   {name:'Triceps Pushdown Corde',muscle:'Triceps',tool:'Poulie'},
   {name:'Skull Crusher EZ',muscle:'Triceps',tool:'Barre EZ'},
   {name:'Seated Triceps Machine',muscle:'Triceps',tool:'Machine'},
-  {name:'Dips',muscle:'Triceps',tool:'Poids corps'},
+  {name:'Dips',muscle:'Triceps',tool:'Poids corps',bwMode:'reps'},
   {name:'Dips Assistés',muscle:'Triceps',tool:'Machine'},
   {name:'Squat barre',muscle:'Quadriceps',tool:'Barre'},
   {name:'Presse à cuisses',muscle:'Quadriceps',tool:'Machine'},
@@ -466,7 +468,15 @@ const EXOS = [
   {name:'Crunch Machine',muscle:'Abdominaux',tool:'Machine'},
   {name:'Pallof Press',muscle:'Abdominaux',tool:'Poulie'},
   {name:'Cable Side Bend',muscle:'Abdominaux',tool:'Poulie'},
-  {name:'Gainage',muscle:'Abdominaux',tool:'Poids corps'},
+  {name:'Gainage',muscle:'Abdominaux',tool:'Poids corps',bwMode:'duree'},
+  {name:'Planche',muscle:'Abdominaux',tool:'Poids corps',bwMode:'duree'},
+  {name:'Dead Hang',muscle:'Dos',tool:'Poids corps',bwMode:'duree'},
+  {name:'Pompes',muscle:'Pectoraux',tool:'Poids corps',bwMode:'reps'},
+  {name:'Touche épaules',muscle:'Abdominaux',tool:'Poids corps',bwMode:'reps'},
+  {name:'Touche chevilles',muscle:'Abdominaux',tool:'Poids corps',bwMode:'reps'},
+  {name:'Mountain Climbers',muscle:'Abdominaux',tool:'Poids corps',bwMode:'duree'},
+  {name:'Rameur (calisthenie)',muscle:'Abdominaux',tool:'Poids corps',bwMode:'duree'},
+  {name:'Lateral Plank',muscle:'Abdominaux',tool:'Poids corps',bwMode:'duree'},
   {name:'Reverse Curl',muscle:'Avant-bras',tool:'Haltères'},
   {name:'Wrist Curl',muscle:'Avant-bras',tool:'Haltères'},
 ];
@@ -476,7 +486,7 @@ const pad = n => n<10?'0'+n:''+n;
 const uuid = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
 const fmtDate = ts => new Date(ts).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'});
 const fmtDur = s => { const m=Math.floor(s/60),r=s%60; return m+'min'+(r>0?' '+r+'s':''); };
-const calcVol = exos => exos.reduce((t,ex)=>ex.type==='cardio'?t:t+ex.series.reduce((s,sr)=>s+(parseFloat(sr.charge)||0)*(parseInt(sr.reps)||0),0),0);
+const calcVol = exos => exos.reduce((t,ex)=>(ex.type==='cardio'||ex.type==='bodyweight')?t:t+ex.series.reduce((s,sr)=>s+(parseFloat(sr.charge)||0)*(parseInt(sr.reps)||0),0),0);
 
 // ── NAV ──
 function goTo(id) {
@@ -572,19 +582,30 @@ function selectExo(i) {
   const e = EXOS[i];
   if (!e) return;
   const isC = e.type==='cardio';
+  const isBW = e.tool==='Poids corps';
   const isDB = e.tool==='Haltères' || e.tool==='Poulie';
   const defaultDbMode = e.tool==='Haltères' ? 'single' : 'total';
-  CS.exercices.push({ id:uuid(), name:e.name, muscle:e.muscle, tool:e.tool, type:isC?'cardio':'strength',
+  CS.exercices.push({ id:uuid(), name:e.name, muscle:e.muscle, tool:e.tool,
+    type: isC ? 'cardio' : (isBW ? 'bodyweight' : 'strength'),
     dbMode: isDB ? defaultDbMode : null,
-    series: isC ? [{duree:'',vitesse:'',inclinaison:'',done:false}] : [{charge:'',unit:'kg',reps:'',done:false}] });
+    bwMode: isBW ? (e.bwMode || 'reps') : null,
+    series: isC ? [{duree:'',vitesse:'',inclinaison:'',done:false}]
+      : isBW ? [{ reps:'', duree:'', done:false }]
+      : [{charge:'',unit:'kg',reps:'',done:false}] });
   document.getElementById('exo-modal').classList.remove('open');
   renderExos();
 }
 
 function addCustom() {
   const n = document.getElementById('exo-search').value; if (!n) return;
-  CS.exercices.push({ id:uuid(), name:n, muscle:'Personnalisé', tool:'—', type:'strength', dbMode:null, series:[{charge:'',unit:'kg',reps:'',done:false}] });
+  CS.exercices.push({ id:uuid(), name:n, muscle:'Personnalisé', tool:'—', type:'strength', dbMode:null, bwMode:null, series:[{charge:'',unit:'kg',reps:'',done:false}] });
   document.getElementById('exo-modal').classList.remove('open');
+  renderExos();
+}
+
+function togBWMode(ei) {
+  if (!CS?.exercices[ei]) return;
+  CS.exercices[ei].bwMode = CS.exercices[ei].bwMode === 'reps' ? 'duree' : 'reps';
   renderExos();
 }
 
@@ -608,7 +629,10 @@ function renderExos() {
   });
   document.getElementById('exo-list').innerHTML = CS.exercices.map((exo,ei)=>{
     const isC = exo.type==='cardio';
-    const badge = isC ? (exo.series[0]?.duree ? exo.series[0].duree+' min':'Cardio') : exo.series.length+' série'+(exo.series.length>1?'s':'');
+    const isBW = exo.type==='bodyweight';
+    const badge = isC ? (exo.series[0]?.duree ? exo.series[0].duree+' min':'Cardio')
+      : isBW ? exo.series.length+' série'+(exo.series.length>1?'s':'')
+      : exo.series.length+' série'+(exo.series.length>1?'s':'');
     const tag = exo.tag || null;
     const isClosed = closedBodies.has(ei);
 
@@ -631,6 +655,20 @@ function renderExos() {
         <div class="serie-check${s.done?' done':''}">${s.done?'✓':''}</div>
         <span>${s.done?'Terminé ✓':'Marquer comme terminé'}</span>
       </div>`;
+    } else if (isBW) {
+      const mode = exo.bwMode || 'reps';
+      body=`<div class="series-header" style="grid-template-columns:24px 1fr 36px 28px">
+        <span></span>
+        <span>${mode==='reps'?'Reps':'Durée (sec)'} <span class="unit-btn" onclick="togBWMode(${ei})">${mode==='reps'?'⏱ passer en durée':'🔢 passer en reps'}</span></span>
+        <span></span><span></span>
+      </div>
+      ${exo.series.map((s,si)=>`<div class="serie-row" style="grid-template-columns:24px 1fr 36px 28px${s.done?';background:rgba(200,241,53,0.04)':''}">
+        <span class="serie-num">${si+1}</span>
+        <input class="serie-input" type="number" inputmode="numeric" value="${mode==='reps'?(s.reps||''):(s.duree||'')}" placeholder="${mode==='reps'?'12':'30'}" onchange="updS(${ei},${si},'${mode==='reps'?'reps':'duree'}',this.value)">
+        <div class="serie-check${s.done?' done':''}" onclick="togS(${ei},${si})">${s.done?'✓':''}</div>
+        <div class="del-serie" onclick="delSerie(${ei},${si})">✕</div>
+      </div>`).join('')}
+      <div class="add-serie" onclick="addSerie(${ei})"><div class="add-circle">＋</div> Ajouter une série</div>`;
     } else {
       const unit=exo.series[0]?.unit||'kg';
       const isDB = exo.dbMode !== null && (exo.tool==='Haltères' || exo.tool==='Poulie');
@@ -658,11 +696,27 @@ function renderExos() {
       <span class="order-btn" onclick="moveExo(${ei},-1)" title="Monter">↑</span>
       <span class="order-btn" onclick="moveExo(${ei},1)" title="Descendre">↓</span>
       <span class="exo-opt-btn danger" onclick="delExo(${ei})">🗑</span>
+    </div>
+    <div class="exo-options-row" style="border-top:none;padding-top:0">
+      <span class="exo-opt-btn${exo.phase==='warmup'?' active-warmup':''}" onclick="togPhase(${ei},'warmup')">🔸 Échauffement</span>
+      <span class="exo-opt-btn${exo.phase==='finisher'?' active-finisher':''}" onclick="togPhase(${ei},'finisher')">🏁 Finisher</span>
     </div>`;
 
-    return `${bridgeHtml}<div class="exo-card">
+    const phaseLabel = exo.phase==='warmup' ? '<span style="font-size:10px;color:#ffb84d;border:1px solid rgba(255,184,77,0.3);background:rgba(255,184,77,0.1);padding:2px 7px;border-radius:99px;margin-left:6px">🔸 ÉCHAUFFEMENT</span>'
+      : exo.phase==='finisher' ? '<span style="font-size:10px;color:#ff6b9d;border:1px solid rgba(255,107,157,0.3);background:rgba(255,107,157,0.1);padding:2px 7px;border-radius:99px;margin-left:6px">🏁 FINISHER</span>' : '';
+
+    // Phase section divider — show a header when the phase changes from previous exo
+    const prevPhase = ei > 0 ? (CS.exercices[ei-1].phase || 'main') : null;
+    const curPhase = exo.phase || 'main';
+    let phaseDivider = '';
+    if (ei === 0 || prevPhase !== curPhase) {
+      const phaseTitles = { warmup: '🔸 Échauffement', main: '💪 Séance principale', finisher: '🏁 Finisher' };
+      phaseDivider = `<div style="font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--text3);text-transform:uppercase;margin:${ei===0?'0':'16px'} 0 8px 4px">${phaseTitles[curPhase]}</div>`;
+    }
+
+    return `${phaseDivider}${bridgeHtml}<div class="exo-card">
       <div class="exo-header" onclick="togBody(${ei})">
-        <div><div class="exo-name">${isC?'🏃 ':''}${exo.name}${tag==='superset'?' <span style="font-size:10px;color:#64a0ff">⚡SS</span>':tag==='dropset'?' <span style="font-size:10px;color:#ff8c00">🔥DS</span>':''}</div><div class="exo-muscle">${exo.muscle} · ${exo.tool}</div></div>
+        <div><div class="exo-name">${isC?'🏃 ':''}${exo.name}${tag==='superset'?' <span style="font-size:10px;color:#64a0ff">⚡SS</span>':tag==='dropset'?' <span style="font-size:10px;color:#ff8c00">🔥DS</span>':''}${phaseLabel}</div><div class="exo-muscle">${exo.muscle} · ${exo.tool}</div></div>
         <span class="exo-badge" id="bdg${ei}">${badge}</span>
       </div>
       <div class="exo-body" id="bdy${ei}" style="${isClosed?'display:none':''}">${body}${optRow}</div>
@@ -690,6 +744,7 @@ function addSerie(ei) { if(!CS?.exercices[ei])return; const l=CS.exercices[ei].s
 function delSerie(ei,si) { if(!CS?.exercices[ei])return; if(CS.exercices[ei].series.length<=1){alert('Minimum 1 série');return;} CS.exercices[ei].series.splice(si,1); renderExos(); }
 function delExo(ei) { if(!CS?.exercices[ei])return; if(confirm('Supprimer cet exercice ?')){ CS.exercices.splice(ei,1); renderExos(); } }
 function togTag(ei,tag) { if(!CS?.exercices[ei])return; CS.exercices[ei].tag = CS.exercices[ei].tag===tag ? null : tag; renderExos(); }
+function togPhase(ei,phase) { if(!CS?.exercices[ei])return; CS.exercices[ei].phase = CS.exercices[ei].phase===phase ? null : phase; renderExos(); }
 function moveExo(ei, dir) {
   if (!CS?.exercices) return;
   const ni = ei + dir;
@@ -744,9 +799,13 @@ function confirmCustomExo() {
   const name = document.getElementById('custom-name').value.trim();
   const muscle = document.getElementById('custom-muscle').value.trim() || 'Personnalisé';
   if (!name) { alert('Donne un nom à l\'exercice'); return; }
+  const isBW = selectedCustomTool==='Poids corps';
   const isDB = selectedCustomTool==='Haltères' || selectedCustomTool==='Poulie';
   const dbMode = isDB ? (selectedCustomTool==='Haltères' ? 'single' : 'total') : null;
-  const exo = { id:uuid(), name, muscle, tool:selectedCustomTool, type:'strength', dbMode, series:[{charge:'',unit:'kg',reps:'',done:false}] };
+  const exo = { id:uuid(), name, muscle, tool:selectedCustomTool,
+    type: isBW ? 'bodyweight' : 'strength', dbMode,
+    bwMode: isBW ? 'reps' : null,
+    series: isBW ? [{reps:'',duree:'',done:false}] : [{charge:'',unit:'kg',reps:'',done:false}] };
   if (document.getElementById('custom-save').checked) saveCustomExo({name, muscle, tool:selectedCustomTool});
   CS.exercices.push(exo);
   document.getElementById('custom-modal').classList.remove('open');
@@ -799,19 +858,27 @@ function finishSession() {
 }
 
 function buildRecap(exo) {
+  const phaseLabel = exo.phase==='warmup' ? ' <span style="font-size:11px;color:#ffb84d">🔸 Échauffement</span>'
+    : exo.phase==='finisher' ? ' <span style="font-size:11px;color:#ff6b9d">🏁 Finisher</span>' : '';
   if (exo.type==='cardio') {
     const s=exo.series[0]||{};
-    return `<div class="recap-exo"><div class="recap-exo-name">🏃 ${exo.name}</div><div class="pills">
+    return `<div class="recap-exo"><div class="recap-exo-name">🏃 ${exo.name}${phaseLabel}</div><div class="pills">
       ${s.duree?`<div class="pill">${s.duree} min</div>`:''}
       ${s.vitesse?`<div class="pill">${s.vitesse} km/h</div>`:''}
       ${s.inclinaison?`<div class="pill">${s.inclinaison}% inclin.</div>`:''}
+    </div></div>`;
+  }
+  if (exo.type==='bodyweight') {
+    const mode = exo.bwMode || 'reps';
+    return `<div class="recap-exo"><div class="recap-exo-name">${exo.name}${phaseLabel}</div><div class="pills">
+      ${exo.series.map(s => `<div class="pill">${mode==='reps' ? (s.reps||'—')+' reps' : (s.duree||'—')+' sec'}</div>`).join('')}
     </div></div>`;
   }
   const max=Math.max(...exo.series.map(s=>parseFloat(s.charge)||0));
   const unit=exo.series[0]?.unit||'kg';
   const tagLabel = exo.tag==='superset'?' <span style="font-size:11px;color:#64a0ff">⚡ Superset</span>':exo.tag==='dropset'?' <span style="font-size:11px;color:#ff8c00">🔥 Dropset</span>':exo.tag==='myset'?' <span style="font-size:11px;color:var(--accent)">💪 Myoset</span>':'';
   const dbSingle = exo.dbMode === 'single';
-  return `<div class="recap-exo"><div class="recap-exo-name">${exo.name}${tagLabel}</div><div class="pills">
+  return `<div class="recap-exo"><div class="recap-exo-name">${exo.name}${tagLabel}${phaseLabel}</div><div class="pills">
     ${exo.series.map(s=>{ const pr=parseFloat(s.charge)===max&&max>0; const chargeLabel=dbSingle?`2×${s.charge||'—'}`:(s.charge||'—'); return `<div class="pill${pr?' pr':''}">${chargeLabel}${unit} × ${s.reps||'—'}${pr?' PR':''}</div>`; }).join('')}
   </div></div>`;
 }
