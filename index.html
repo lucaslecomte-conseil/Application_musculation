@@ -510,6 +510,21 @@ const EXOS = [
   {name:'Vélo stationnaire',muscle:'Cardio',tool:'Cardio',type:'cardio'},
   {name:'Rameur',muscle:'Cardio',tool:'Cardio',type:'cardio'},
   {name:'Stairmaster',muscle:'Cardio',tool:'Cardio',type:'cardio'},
+  {name:'Scapular Wall Slide',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:'Band Pull-Apart',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:'Open Book Rotation',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:'Quadruped Scap Push-Up',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:"Child's Pose Lat Reach",muscle:'Mobilité',tool:'Poids corps',bwMode:'duree'},
+  {name:'90/90 Hip Switch',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:'Adductor Rock Back',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:"World's Greatest Stretch",muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:'Deep Squat Hold',muscle:'Mobilité',tool:'Poids corps',bwMode:'duree'},
+  {name:'Knee-to-Wall',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
+  {name:'Bodyweight Squat',muscle:'Quadriceps',tool:'Poids corps',bwMode:'reps'},
+  {name:'Couch Stretch',muscle:'Mobilité',tool:'Poids corps',bwMode:'duree'},
+  {name:'Pec Doorway Stretch',muscle:'Mobilité',tool:'Poids corps',bwMode:'duree'},
+  {name:'Lat Stretch sur banc',muscle:'Mobilité',tool:'Poids corps',bwMode:'duree'},
+  {name:'Respiration finale',muscle:'Mobilité',tool:'Poids corps',bwMode:'reps'},
   {name:'Bench Press',muscle:'Pectoraux',tool:'Barre'},
   {name:'Développé couché',muscle:'Pectoraux',tool:'Barre'},
   {name:'Incline DB Press',muscle:'Pectoraux',tool:'Haltères'},
@@ -653,7 +668,9 @@ function filterExos(q) {
       html+=`<div class="exo-opt" onclick="selectExo(${i})"><div class="exo-opt-name">${e.name}</div><div class="exo-opt-tag">${e.tool}</div></div>`;
     });
   });
-  if (q && !list.length) html=`<div class="exo-opt" onclick="openCustomModal('${q.replace(/'/g,"\\'")}')"><div class="exo-opt-name">＋ Ajouter "${q}"</div><div class="exo-opt-tag">Personnalisé</div></div>`;
+  // Bouton créer un exercice personnalisé — toujours visible
+  const createBtn = `<div class="exo-opt" onclick="openCustomModal('${q.replace(/'/g,"\\'")}')" style="border-top:1px solid var(--border)"><div class="exo-opt-name" style="color:var(--accent)">＋ ${q ? `Ajouter "${q}" comme exercice perso` : 'Créer un exercice personnalisé'}</div></div>`;
+  html += createBtn;
   // Also show saved custom exos
   const saved = getSavedExos();
   if (saved.length && !q) {
