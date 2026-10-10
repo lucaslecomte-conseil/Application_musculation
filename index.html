@@ -306,7 +306,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);ove
     <div class="icon-btn" onclick="goTo('s-home')">‹</div>
     <div class="topbar-center">
       <div class="topbar-title">Coach IA</div>
-      <div class="topbar-sub">Groq · Llama 3.1</div>
+      <div class="topbar-sub">Groq · GPT-OSS 120B</div>
     </div>
     <div class="icon-btn" onclick="showKeySetup()" title="Clé API">🔑</div>
   </div>
@@ -671,11 +671,13 @@ function filterExos(q) {
   // Bouton créer un exercice personnalisé — toujours visible
   const createBtn = `<div class="exo-opt" onclick="openCustomModal('${q.replace(/'/g,"\\'")}')" style="border-top:1px solid var(--border)"><div class="exo-opt-name" style="color:var(--accent)">＋ ${q ? `Ajouter "${q}" comme exercice perso` : 'Créer un exercice personnalisé'}</div></div>`;
   html += createBtn;
-  // Also show saved custom exos
-  const saved = getSavedExos();
-  if (saved.length && !q) {
+  // Mes exercices perso : affichés en haut, aussi pendant la recherche
+  const savedMatches = getSavedExos()
+    .map((e,i)=>({e,i}))
+    .filter(({e}) => !q || e.name.toLowerCase().includes(low) || (e.muscle||'').toLowerCase().includes(low));
+  if (savedMatches.length) {
     html = `<div class="exo-section-hdr">⭐ Mes exercices</div>` +
-      saved.map((e,i)=>`<div class="exo-opt" onclick="selectSavedExo(${i})"><div class="exo-opt-name">${e.name}</div><div class="exo-opt-tag">${e.tool}</div></div>`).join('') + html;
+      savedMatches.map(({e,i})=>`<div class="exo-opt" onclick="selectSavedExo(${i})"><div class="exo-opt-name">${e.name}</div><div class="exo-opt-tag">${e.tool}</div></div>`).join('') + html;
   }
   document.getElementById('exo-options').innerHTML = html;
 }
@@ -932,9 +934,12 @@ function saveCustomExo(e) { const list=getSavedExos(); if(!list.find(x=>x.name==
 function selectSavedExo(i) {
   const e = getSavedExos()[i]; if (!e) return;
   const isDB = e.tool==='Haltères' || e.tool==='Poulie';
-  CS.exercices.push({ id:uuid(), name:e.name, muscle:e.muscle, tool:e.tool, type:'strength',
+  const isBW = e.tool==='Poids corps';
+  CS.exercices.push({ id:uuid(), name:e.name, muscle:e.muscle, tool:e.tool,
+    type: isBW ? 'bodyweight' : 'strength',
     dbMode: isDB ? (e.tool==='Haltères'?'single':'total') : null,
-    series:[{charge:'',unit:'kg',reps:'',done:false}] });
+    bwMode: isBW ? 'reps' : null,
+    series: isBW ? [{reps:'',duree:'',done:false}] : [{charge:'',unit:'kg',reps:'',done:false}] });
   document.getElementById('exo-modal').classList.remove('open');
   renderExos();
 }
@@ -1025,6 +1030,8 @@ async function deleteSession() {
 }
 
 // ── AI COACH ──
+// Modèle Groq : llama-3.3-70b-versatile a été arrêté le 16/08/2026 → openai/gpt-oss-120b
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 function getKey() { return localStorage.getItem('groq_key') || ''; }
 function saveKey() {
   const k = document.getElementById('groq-key-input').value.trim();
@@ -1066,8 +1073,9 @@ async function callGroq(systemPrompt, userPrompt, targetEl) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 1200,
+        model: GROQ_MODEL,
+        reasoning_effort: 'low',
+        max_tokens: 4000,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -1149,8 +1157,9 @@ Format exact :
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 1500,
+        model: GROQ_MODEL,
+        reasoning_effort: 'low',
+        max_tokens: 4000,
         messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }]
       })
     });
@@ -1159,7 +1168,8 @@ Format exact :
     const raw = data.choices[0].message.content.trim().replace(/```json|```/g, '').trim();
 
     try {
-      lastSuggestion = JSON.parse(raw);
+      const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+      lastSuggestion = JSON.parse(a >= 0 && b > a ? raw.slice(a, b + 1) : raw);
       // Affichage lisible
       let html = `<strong style="color:var(--text);font-size:15px">${lastSuggestion.nom}</strong>\n\n`;
       html += `<span style="color:var(--text2);font-style:italic">${lastSuggestion.conseils}</span>\n\n`;
